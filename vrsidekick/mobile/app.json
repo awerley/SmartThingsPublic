@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "VR Sidekick",
+    "slug": "vrsidekick",
+    "scheme": "vrsidekick",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": { "image": "./assets/icon.png", "resizeMode": "contain", "backgroundColor": "#111b47" },
+    "ios": { "bundleIdentifier": "com.vrsidekick.app", "supportsTablet": true },
+    "android": {
+      "package": "com.vrsidekick.app",
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#111b47" }
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-web-browser"],
+    "experiments": { "typedRoutes": false }
+  }
+}

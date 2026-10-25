@@ -96,9 +96,9 @@ function AvailabilityInner() {
                     {dayRules.length === 0 && <span className="block pt-2 text-sm text-gray-400">Unavailable</span>}
                     {dayRules.map(({ r, idx }) => (
                       <div key={idx} className="flex items-center gap-2">
-                        <input className="input w-28" type="time" value={r.start} onChange={(e) => setRules(rules.map((x, j) => (j === idx ? { ...x, start: e.target.value } : x)))} />
+                        <input className="input w-36" type="time" value={r.start} onChange={(e) => setRules(rules.map((x, j) => (j === idx ? { ...x, start: e.target.value } : x)))} />
                         <span>–</span>
-                        <input className="input w-28" type="time" value={r.end} onChange={(e) => setRules(rules.map((x, j) => (j === idx ? { ...x, end: e.target.value } : x)))} />
+                        <input className="input w-36" type="time" value={r.end} onChange={(e) => setRules(rules.map((x, j) => (j === idx ? { ...x, end: e.target.value } : x)))} />
                         <button className="text-flame-600" onClick={() => setRules(rules.filter((_, j) => j !== idx))} aria-label="Remove">✕</button>
                       </div>
                     ))}

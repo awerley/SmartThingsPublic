@@ -13,7 +13,7 @@ export default function Home() {
   }, [user]);
 
   return (
-    <div className="-mx-4 -my-6">
+    <div className="-my-6 mx-[calc(50%-50vw)]">
       <section className="bg-gradient-to-b from-navy-900 to-navy-700 px-4 pt-10 pb-16 text-white">
         <div className="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-2">
           <div>
@@ -34,7 +34,7 @@ export default function Home() {
             </div>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="VR Sidekick" className="mx-auto w-72 md:w-96" />
+          <img src="/logo.png" alt="VR Sidekick" className="mx-auto w-72 rounded-3xl bg-white p-4 shadow-xl md:w-96" />
         </div>
       </section>
 

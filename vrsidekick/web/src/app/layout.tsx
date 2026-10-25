@@ -14,7 +14,7 @@ export const viewport: Viewport = { themeColor: "#111b47", width: "device-width"
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen antialiased">
+      <body className="min-h-screen overflow-x-hidden antialiased">
         <AuthProvider>
           <Nav />
           <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
