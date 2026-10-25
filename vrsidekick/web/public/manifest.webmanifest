@@ -1,0 +1,9 @@
+{
+  "name": "VR Sidekick",
+  "short_name": "Sidekick",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#111b47",
+  "theme_color": "#111b47",
+  "icons": [{ "src": "/icon.png", "sizes": "512x512", "type": "image/png" }]
+}

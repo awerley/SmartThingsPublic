@@ -1,0 +1,385 @@
+// VR Sidekick data model
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  HOST
+  SIDEKICK
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProviderType {
+  INDIVIDUAL
+  COMPANY
+}
+
+enum RateType {
+  HOURLY
+  FLAT
+}
+
+enum ExceptionKind {
+  BLOCK // time removed from availability (travel, appointment, vacation)
+  EXTRA // one-off availability outside the standard weekly schedule
+}
+
+enum JobStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum Frequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum SeriesStatus {
+  REQUESTED
+  ACTIVE
+  DECLINED
+  CANCELLED
+}
+
+enum AdStatus {
+  OPEN
+  FILLED
+  CLOSED
+}
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  passwordHash     String
+  name             String
+  phone            String?
+  role             Role       @default(HOST)
+  status           UserStatus @default(ACTIVE)
+  avatarUrl        String?
+  stripeCustomerId String?
+  hasPaymentMethod Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  sidekick         SidekickProfile?
+  properties       Property[]
+  hostJobs         Job[]              @relation("HostJobs")
+  hostSeries       RecurringSeries[]  @relation("HostSeries")
+  wantedAds        WantedAd[]
+  hostConversations Conversation[]    @relation("HostConversations")
+  messages         Message[]
+  reviewsWritten   Review[]
+}
+
+model SidekickProfile {
+  id                 String       @id @default(cuid())
+  userId             String       @unique
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerType       ProviderType @default(INDIVIDUAL)
+  displayName        String
+  companyName        String?
+  bio                String?
+  yearsExperience    Int?
+  insured            Boolean      @default(false)
+  // Service area: a base location + radius, and/or an explicit list of ZIP codes.
+  baseZip            String?
+  baseLat            Float?
+  baseLng            Float?
+  serviceRadiusMiles Int          @default(15)
+  serviceZips        String[]
+  timezone           String       @default("America/New_York")
+  travelBufferMins   Int          @default(30)
+  stripeAccountId    String?
+  payoutsEnabled     Boolean      @default(false)
+  ratingAvg          Float        @default(0)
+  ratingCount        Int          @default(0)
+  published          Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  tasks         SidekickTask[]
+  skills        SidekickSkill[]
+  tools         SidekickTool[]
+  rules         AvailabilityRule[]
+  exceptions    AvailabilityException[]
+  jobs          Job[]
+  series        RecurringSeries[]
+  conversations Conversation[]
+}
+
+model TaskType {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  icon        String?
+  active      Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  sidekickTasks SidekickTask[]
+  jobs          Job[]
+  series        RecurringSeries[]
+  wantedAds     WantedAd[]
+}
+
+model Skill {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  active Boolean @default(true)
+
+  sidekicks SidekickSkill[]
+}
+
+model Tool {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  active Boolean @default(true)
+
+  sidekicks SidekickTool[]
+}
+
+model SidekickTask {
+  id         String          @id @default(cuid())
+  sidekickId String
+  sidekick   SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  taskTypeId String
+  taskType   TaskType        @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
+  rateType   RateType
+  rateCents  Int
+  notes      String?
+
+  @@unique([sidekickId, taskTypeId])
+}
+
+model SidekickSkill {
+  sidekickId String
+  sidekick   SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  skillId    String
+  skill      Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([sidekickId, skillId])
+}
+
+model SidekickTool {
+  sidekickId String
+  sidekick   SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  toolId     String
+  tool       Tool            @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([sidekickId, toolId])
+}
+
+// Standard weekly schedule, expressed in the sidekick's local timezone.
+model AvailabilityRule {
+  id          String          @id @default(cuid())
+  sidekickId  String
+  sidekick    SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int // 1 = Monday ... 7 = Sunday (ISO)
+  startMinute Int // minutes from local midnight
+  endMinute   Int
+}
+
+// One-off changes to the weekly schedule.
+model AvailabilityException {
+  id         String          @id @default(cuid())
+  sidekickId String
+  sidekick   SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  kind       ExceptionKind
+  startAt    DateTime
+  endAt      DateTime
+  reason     String?
+  createdAt  DateTime        @default(now())
+
+  @@index([sidekickId, startAt])
+}
+
+model Property {
+  id        String   @id @default(cuid())
+  hostId    String
+  host      User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  name      String
+  address   String
+  city      String
+  state     String
+  zip       String
+  lat       Float?
+  lng       Float?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  jobs      Job[]
+  series    RecurringSeries[]
+  wantedAds WantedAd[]
+}
+
+model RecurringSeries {
+  id              String          @id @default(cuid())
+  hostId          String
+  host            User            @relation("HostSeries", fields: [hostId], references: [id], onDelete: Cascade)
+  sidekickId      String
+  sidekick        SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  propertyId      String
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  taskTypeId      String
+  taskType        TaskType        @relation(fields: [taskTypeId], references: [id])
+  title           String
+  description     String?
+  frequency       Frequency
+  firstStartAt    DateTime
+  durationMinutes Int
+  endsOn          DateTime?
+  rateType        RateType
+  rateCents       Int
+  estimatedHours  Float?
+  status          SeriesStatus    @default(REQUESTED)
+  generatedUntil  DateTime?
+  createdAt       DateTime        @default(now())
+
+  jobs Job[]
+}
+
+model Job {
+  id                    String          @id @default(cuid())
+  hostId                String
+  host                  User            @relation("HostJobs", fields: [hostId], references: [id], onDelete: Cascade)
+  sidekickId            String
+  sidekick              SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  propertyId            String
+  property              Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  taskTypeId            String
+  taskType              TaskType        @relation(fields: [taskTypeId], references: [id])
+  seriesId              String?
+  series                RecurringSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  title                 String
+  description           String?
+  startAt               DateTime
+  endAt                 DateTime
+  status                JobStatus       @default(REQUESTED)
+  rateType              RateType
+  rateCents             Int
+  estimatedHours        Float?
+  actualHours           Float?
+  subtotalCents         Int             @default(0)
+  serviceFeeCents       Int             @default(0)
+  totalCents            Int             @default(0)
+  feePercentApplied     Float           @default(0)
+  paymentStatus         PaymentStatus   @default(UNPAID)
+  stripePaymentIntentId String?
+  completedAt           DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  review Review?
+
+  @@index([sidekickId, startAt])
+  @@index([hostId, startAt])
+}
+
+model Conversation {
+  id         String          @id @default(cuid())
+  hostId     String
+  host       User            @relation("HostConversations", fields: [hostId], references: [id], onDelete: Cascade)
+  sidekickId String
+  sidekick   SidekickProfile @relation(fields: [sidekickId], references: [id], onDelete: Cascade)
+  wantedAdId String?
+  wantedAd   WantedAd?       @relation(fields: [wantedAdId], references: [id], onDelete: SetNull)
+  subject    String?
+  updatedAt  DateTime        @updatedAt
+  createdAt  DateTime        @default(now())
+
+  messages Message[]
+
+  // One thread per host/sidekick pair; job and ad context is posted into it.
+  @@unique([hostId, sidekickId])
+  @@index([sidekickId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// "Sidekick wanted" ads posted by hosts and browsed by sidekicks.
+model WantedAd {
+  id            String    @id @default(cuid())
+  hostId        String
+  host          User      @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  propertyId    String?
+  property      Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  taskTypeId    String
+  taskType      TaskType  @relation(fields: [taskTypeId], references: [id])
+  title         String
+  description   String
+  zip           String
+  lat           Float?
+  lng           Float?
+  budgetCents   Int?
+  rateType      RateType?
+  recurring     Boolean   @default(false)
+  frequency     Frequency?
+  preferredDate DateTime?
+  status        AdStatus  @default(OPEN)
+  createdAt     DateTime  @default(now())
+
+  conversations Conversation[]
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+}
+
+// Single-row table holding marketplace settings editable by admins.
+model PlatformSettings {
+  id                  Int      @id @default(1)
+  oneTimeFeePercent   Float    @default(15)
+  recurringFeePercent Float    @default(10)
+  minimumFeeCents     Int      @default(200)
+  recurringHorizonDays Int     @default(56)
+  updatedAt           DateTime @updatedAt
+}
+
+// Cache of ZIP code centroids used for service-area matching.
+model ZipGeo {
+  zip   String @id
+  lat   Float
+  lng   Float
+  city  String?
+  state String?
+}
